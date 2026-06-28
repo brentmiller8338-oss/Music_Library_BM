@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Library</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0f0f10; color:#eee; }
+  header { position: sticky; top: 0; background: rgba(15,15,16,.96); backdrop-filter: blur(8px); padding: 10px; border-bottom: 1px solid #2a2a2a; z-index:2; }
+  .row { display:flex; gap:8px; align-items:center; }
+  input { width:100%; padding:10px 12px; font-size:16px; border-radius:10px; border:1px solid #333; background:#151517; color:#eee; }
+  button { padding:10px 12px; font-size:14px; border-radius:10px; border:1px solid #333; background:#151517; color:#eee; white-space:nowrap; }
+  button.active { outline: 2px solid #666; }
+  #status { margin-top:8px; font-size:12px; color:#aaa; }
+  .list { padding: 6px 0 24px; }
+  .item { padding: 10px 12px; border-bottom:1px solid #242424; }
+  .titleline { font-weight: 650; font-size: 15px; }
+  .meta { font-size: 12px; color: #aaa; margin-top: 2px; }
+  .pill { display:inline-block; font-size:11px; padding:2px 8px; border:1px solid #333; border-radius:999px; margin-left:6px; color:#bbb; }
+  .tracks { margin-top:8px; padding-left: 10px; border-left: 2px solid #2b2b2b; }
+  .track { padding: 6px 0; }
+  .track .t { font-size: 13px; }
+  .track .m { font-size: 11px; color:#9a9a9a; }
+  .muted { color:#888; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <input id="q" placeholder="Search artist, album, title…" autocomplete="off" />
+    <button id="modeAlbums" class="active" title="Group results by album">Albums</button>
+    <button id="modeTracks" title="Search tracks">Tracks</button>
+  </div>
+  <div id="status">Loading album index…</div>
+</header>
+<div class="list" id="list"></div>
+
+<script>
+const state = {
+  mode: "albums",
+  manifest: null,
+  albums: [],
+  chunks: new Map(),
+  allTracksLoaded: false
+};
+
+function norm(s) { return (s ?? "").toString().toLowerCase(); }
+
+function matchesWord(haystack, needle) {
+  if (!needle) return true;
+  const words = needle.trim().split(/\s+/).filter(Boolean);
+  return words.every(w => {
+    const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp("\\b" + escaped + "\\b", "i");
+    return re.test(haystack);
+  });
+}
+
+function escapeHtml(s) {
+  return (s ?? "").toString()
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+}
+
+function safeNum(x) {
+  const n = parseInt(x, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function setStatus(text) { document.getElementById("status").textContent = text; }
+
+async function loadChunk(chunk) {
+  if (state.chunks.has(chunk)) return state.chunks.get(chunk);
+  setStatus(`Loading ${chunk} tracks…`);
+  const r = await fetch(`${chunk}.json`);
+  const data = await r.json();
+  state.chunks.set(chunk, data);
+  return data;
+}
+
+async function loadAllChunks() {
+  if (state.allTracksLoaded) return;
+  const chunks = state.manifest.chunks.map(c => c.chunk);
+  let done = 0;
+  for (const ch of chunks) {
+    if (!state.chunks.has(ch)) {
+      await loadChunk(ch);
+    }
+    done++;
+    setStatus(`Loaded ${done}/${chunks.length} data files…`);
+  }
+  state.allTracksLoaded = true;
+}
+
+function renderAlbums(query) {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  const q = norm(query).trim();
+  let shown = 0, matched = 0;
+  const limit = 300;
+
+  for (const a of state.albums) {
+    if (q && !matchesWord(a.search, q)) continue;
+    matched++;
+    if (shown >= limit) continue;
+
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="titleline">${escapeHtml(a.albumArtist || "(Unknown Artist)")} — ${escapeHtml(a.album || "(Unknown Album)")}
+        <span class="pill">${a.count} tracks</span>
+      </div>
+      <div class="meta">
+        ${a.year ? escapeHtml(a.year) : "<span class='muted'>Year?</span>"}
+        ${a.genre ? " • " + escapeHtml(a.genre) : ""}
+      </div>
+      <div class="tracks" style="display:none"></div>
+    `;
+
+    div.addEventListener("click", async () => {
+      const tracksDiv = div.querySelector(".tracks");
+      if (tracksDiv.style.display !== "none") {
+        tracksDiv.style.display = "none";
+        tracksDiv.innerHTML = "";
+        return;
+      }
+      tracksDiv.style.display = "block";
+      tracksDiv.innerHTML = `<div class="track"><div class="m">Loading tracks…</div></div>`;
+      const chunkData = await loadChunk(a.chunk);
+      const tracks = chunkData.filter(t => t.albumKey === a.key);
+      tracks.sort((x,y) => {
+        const dx = safeNum(x.disc) ?? 0, dy = safeNum(y.disc) ?? 0;
+        if (dx !== dy) return dx - dy;
+        const tx = safeNum(x.track) ?? 0, ty = safeNum(y.track) ?? 0;
+        if (tx !== ty) return tx - ty;
+        return (x.title || "").localeCompare(y.title || "");
+      });
+      tracksDiv.innerHTML = tracks.map(t => {
+        const extra = [
+          t.format ? t.format.toUpperCase() : "",
+          t.bitrate ? t.bitrate + "kbps" : "",
+          t.len ? t.len + "s" : ""
+        ].filter(Boolean).join(" • ");
+        return `<div class="track">
+          <div class="t">${t.track ? escapeHtml(t.track) + ". " : ""}${escapeHtml(t.title || "(Unknown Title)")}</div>
+          <div class="m">${escapeHtml(extra)}</div>
+        </div>`;
+      }).join("");
+      setStatus(`${matched.toLocaleString()} album matches • showing ${Math.min(shown, limit).toLocaleString()}`);
+    });
+
+    list.appendChild(div);
+    shown++;
+  }
+  setStatus(`${matched.toLocaleString()} album matches • showing ${Math.min(shown, limit).toLocaleString()} (tap an album to expand)`);
+}
+
+async function renderTracks(query) {
+  const list = document.getElementById("list");
+  const q = norm(query).trim();
+  list.innerHTML = "";
+
+  if (!q) {
+    setStatus("Type a search term to search tracks.");
+    return;
+  }
+
+  await loadAllChunks();
+
+  let shown = 0, matched = 0;
+  const limit = 500;
+  const allTracks = Array.from(state.chunks.values()).flat();
+
+  for (const t of allTracks) {
+    const hay = norm([t.artist,t.albumArtist,t.album,t.title,t.genre,t.year].join(" "));
+    if (!matchesWord(hay, q)) continue;
+    matched++;
+    if (shown >= limit) continue;
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <div class="titleline">${escapeHtml(t.title || "(Unknown Title)")}</div>
+      <div class="meta">${escapeHtml(t.artist || "(Unknown Artist)")} — ${escapeHtml(t.album || "(Unknown Album)")}${t.year ? " • " + escapeHtml(t.year) : ""}${t.format ? " • " + escapeHtml(t.format.toUpperCase()) : ""}</div>
+    `;
+    list.appendChild(div);
+    shown++;
+  }
+  setStatus(`${matched.toLocaleString()} track matches • showing ${Math.min(shown, limit).toLocaleString()}`);
+}
+
+function render() {
+  const q = document.getElementById("q").value;
+  if (state.mode === "albums") renderAlbums(q);
+  else renderTracks(q);
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  document.getElementById("modeAlbums").classList.toggle("active", mode === "albums");
+  document.getElementById("modeTracks").classList.toggle("active", mode === "tracks");
+  render();
+}
+
+document.getElementById("modeAlbums").addEventListener("click", () => setMode("albums"));
+document.getElementById("modeTracks").addEventListener("click", () => setMode("tracks"));
+document.getElementById("q").addEventListener("input", () => render());
+
+Promise.all([
+  fetch("manifest.json").then(r => r.json()),
+  fetch("album_index.json").then(r => r.json())
+]).then(([manifest, albums]) => {
+  state.manifest = manifest;
+  state.albums = albums;
+  setStatus(`Loaded ${manifest.tracks.toLocaleString()} tracks • ${manifest.albums.toLocaleString()} albums`);
+  render();
+}).catch(err => {
+  console.error(err);
+  setStatus("Failed to load data files. Make sure index.html and the JSON files are uploaded together at the repository root.");
+});
+</script>
+</body>
+</html>

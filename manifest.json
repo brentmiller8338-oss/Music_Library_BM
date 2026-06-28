@@ -1,0 +1,146 @@
+{
+  "tracks": 69082,
+  "albums": 6327,
+  "chunks": [
+    {
+      "chunk": "0-9",
+      "file": "data/0-9.json",
+      "tracks": 263
+    },
+    {
+      "chunk": "A",
+      "file": "data/A.json",
+      "tracks": 3281
+    },
+    {
+      "chunk": "B",
+      "file": "data/B.json",
+      "tracks": 6081
+    },
+    {
+      "chunk": "C",
+      "file": "data/C.json",
+      "tracks": 4337
+    },
+    {
+      "chunk": "D",
+      "file": "data/D.json",
+      "tracks": 3382
+    },
+    {
+      "chunk": "E",
+      "file": "data/E.json",
+      "tracks": 2804
+    },
+    {
+      "chunk": "F",
+      "file": "data/F.json",
+      "tracks": 1750
+    },
+    {
+      "chunk": "G",
+      "file": "data/G.json",
+      "tracks": 2270
+    },
+    {
+      "chunk": "H",
+      "file": "data/H.json",
+      "tracks": 1921
+    },
+    {
+      "chunk": "I",
+      "file": "data/I.json",
+      "tracks": 430
+    },
+    {
+      "chunk": "J",
+      "file": "data/J.json",
+      "tracks": 3593
+    },
+    {
+      "chunk": "K",
+      "file": "data/K.json",
+      "tracks": 1179
+    },
+    {
+      "chunk": "L",
+      "file": "data/L.json",
+      "tracks": 2668
+    },
+    {
+      "chunk": "M",
+      "file": "data/M.json",
+      "tracks": 5230
+    },
+    {
+      "chunk": "N",
+      "file": "data/N.json",
+      "tracks": 2194
+    },
+    {
+      "chunk": "O",
+      "file": "data/O.json",
+      "tracks": 855
+    },
+    {
+      "chunk": "Other",
+      "file": "data/Other.json",
+      "tracks": 4
+    },
+    {
+      "chunk": "P",
+      "file": "data/P.json",
+      "tracks": 4132
+    },
+    {
+      "chunk": "Q",
+      "file": "data/Q.json",
+      "tracks": 185
+    },
+    {
+      "chunk": "R",
+      "file": "data/R.json",
+      "tracks": 2563
+    },
+    {
+      "chunk": "S",
+      "file": "data/S.json",
+      "tracks": 4433
+    },
+    {
+      "chunk": "T",
+      "file": "data/T.json",
+      "tracks": 8904
+    },
+    {
+      "chunk": "U",
+      "file": "data/U.json",
+      "tracks": 510
+    },
+    {
+      "chunk": "V",
+      "file": "data/V.json",
+      "tracks": 3508
+    },
+    {
+      "chunk": "W",
+      "file": "data/W.json",
+      "tracks": 1940
+    },
+    {
+      "chunk": "X",
+      "file": "data/X.json",
+      "tracks": 32
+    },
+    {
+      "chunk": "Y",
+      "file": "data/Y.json",
+      "tracks": 505
+    },
+    {
+      "chunk": "Z",
+      "file": "data/Z.json",
+      "tracks": 128
+    }
+  ]
+}
